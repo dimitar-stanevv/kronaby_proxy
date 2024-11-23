@@ -1,12 +1,17 @@
 import express from "express";
-import { post } from "axios";
+import { default as axios } from "axios";
 import FormData from "form-data";
 import WebSocket from "ws";
 import { Agent } from "https";
+import  { scheduleJob } from "node-schedule";
+import dotenv from 'dotenv';
+
+dotenv.config();
 const app = express();
 
-const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1"
-const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414"
+const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1";
+const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414";
+const SETTINGS_FILE = "settings.json";
 
 // Set these environment variables beforehand
 const GIGACHARGER_EMAIL = process.env.GIGACHARGER_EMAIL;
@@ -31,7 +36,7 @@ async function obtainGigachargerSessionID(email, password) {
         formData.append("remember", "1");
         formData.append("email", email);
         formData.append("password", password);
-        const loginResponse = await post(`${GIGACHARGER_API_HOST}/login`, formData, {
+        const loginResponse = await axios.post(`${GIGACHARGER_API_HOST}/login`, formData, {
             headers: {
                 "User-Agent": USER_AGENT,
                 "X-Requested-With": "net.gigacharger.app",
@@ -125,6 +130,7 @@ app.get("/gigacharger/start", async (req, res) => {
         const chargerID = MY_CHARGER_ID;
         if (!chargerID) {
             res.status(400).send("No charger ID supplied");
+            return;
         }
         if (!savedSessionID) {
             // No saved session exists - login is required
@@ -134,10 +140,12 @@ app.get("/gigacharger/start", async (req, res) => {
                 savedSessionID = await obtainGigachargerSessionID(email, password);
             } catch (error) {
                 res.status(500).send("Could not log in to Gigacharger");
+                return;
             }
         }
         await authorizeCharging(savedSessionID, chargerID);
-        res.status(200).send("Charging authorized")
+        res.status(200).send("Charging authorized");
+        return;
     } catch (error) {
         res.status(500).send(`Could not authorize charging: ${error.message}`);
     }
