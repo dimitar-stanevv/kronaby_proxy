@@ -8,8 +8,17 @@ const app = express();
 const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1"
 const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414"
 
-// Use a suitable user agent for making the requests:
+// Set these environment variables beforehand
+const GIGACHARGER_EMAIL = process.env.GIGACHARGER_EMAIL;
+const GIGACHARGER_PASSWORD = process.env.GIGACHARGER_PASSWORD;
+const MY_CHARGER_ID = process.env.GIGACHARGER_MY_CHARGER_ID;
+const TESSIE_TOKEN = process.env.TESSIE_TOKEN;
+
+// Use a suitable user agent string for making the requests
 const USER_AGENT = "Mozilla/5.0 (Linux; Android 11; sdk_gphone_arm64 Build/RSR1.210722.013.A4; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Mobile Safari/537.36";
+
+// Keep the session identifier in memory once we have it
+var savedSessionID;
 
 /**
  * Log in to Gigacharger to obtain a session ID via a cookie.
@@ -50,13 +59,13 @@ async function obtainGigachargerSessionID(email, password) {
 }
 
 /**
- * Authorize and start a charging session.
+ * Authorize a charging session.
  * @param {string} sessionID - A valid Gigacharger session ID
  * @param {string} chargerID - The charger to use
- * @returns {Promise<void>} - When the charging session starts successfully
+ * @returns {Promise<void>} - When the charging session is authorized successfully
  * @throws If the request fails, an exception is thrown
  */
-async function startCharging(sessionID, chargerID) {
+async function authorizeCharging(sessionID, chargerID) {
     return new Promise((resolve, reject) => {
         try {
             const webSocket = new WebSocket(GIGACHARGER_WS_URL, {
@@ -78,7 +87,7 @@ async function startCharging(sessionID, chargerID) {
                 webSocket.send(message, (error) => {
                     webSocket.close(1000);
                     if (error) {
-                        reject(new Error("Could not start charging - error sending the start command"));
+                        reject(new Error("Could not authorize charging - error sending the start command"));
                     } else {
                         resolve();
                     }
@@ -103,29 +112,34 @@ async function startCharging(sessionID, chargerID) {
     });
 }
 
+/**
+ * @route Authorize charging
+ * @description Use the Gigacharger API to authorize a charging session
+ * @param {string} [charger] - Charger ID (optional) - if null, will use the one 
+ * from the environment variables
+ * @returns {void} 200 - If charging has been successfully authorized
+ * @returns {Error} 500 - Internal Server Error
+ */
 app.get("/gigacharger/start", async (req, res) => {
     try {
-        const { session, charger } = req.query;
-        if (!session || !charger) {
-            res.status(400).send("Unable to start charging: missing sesion ID and/or charger ID");
+        const chargerID = MY_CHARGER_ID;
+        if (!chargerID) {
+            res.status(400).send("No charger ID supplied");
         }
-        await startCharging(session, charger);
-        res.status(200).send("Charging started")
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-app.get("/gigacharger/login", async (req, res) => {
-    try {
-        const { email, password } = req.query;
-        if (!email || !password) {
-            res.status(400).send("Unable to log in to Gigacharger: missing credentials");
+        if (!savedSessionID) {
+            // No saved session exists - login is required
+            const email = GIGACHARGER_EMAIL;
+            const password = GIGACHARGER_PASSWORD;
+            try {
+                savedSessionID = await obtainGigachargerSessionID(email, password);
+            } catch (error) {
+                res.status(500).send("Could not log in to Gigacharger");
+            }
         }
-        const sessionID = await obtainGigachargerSessionID(email, password);
-        res.status(200).send(`Logged in. Session = ${sessionID}`)
+        await authorizeCharging(savedSessionID, chargerID);
+        res.status(200).send("Charging authorized")
     } catch (error) {
-        res.status(500).send(`Unable to log in to Gigacharger: ${error}`);
+        res.status(500).send(`Could not authorize charging: ${error.message}`);
     }
 });
 
