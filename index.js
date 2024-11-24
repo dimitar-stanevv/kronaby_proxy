@@ -4,7 +4,7 @@ import FormData from "form-data";
 import WebSocket from "ws";
 import { Agent } from "https";
 import  { scheduleJob } from "node-schedule";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 dotenv.config();
 const app = express();
@@ -103,7 +103,7 @@ async function authorizeCharging(sessionID, chargerID) {
                 reject(new Error(`Could not connect to Gigacharger's WebSocket: ${error}`));
             });
         
-            webSocket.on('close', (code, reason) => {
+            webSocket.on("close", (code, reason) => {
                 if (code !== 1000) {
                     // A code 1000 is considered a normal closure
                     // For more info, see here:
@@ -129,26 +129,37 @@ app.get("/gigacharger/start", async (req, res) => {
     try {
         const chargerID = MY_CHARGER_ID;
         if (!chargerID) {
+            console.error("No charger ID supplied - check env variables");
             res.status(400).send("No charger ID supplied");
             return;
         }
+        console.log(`Starting authorization for charger ID ${chargerID}`);
         if (!savedSessionID) {
+            console.log("Not authenticated with Gigacharger - attempting to log in...");
             // No saved session exists - login is required
             const email = GIGACHARGER_EMAIL;
             const password = GIGACHARGER_PASSWORD;
+            if (!email || !password) {
+                console.error("No credentials for Gigacharger supplied - check env variables");
+                res.status(400).send("No Gigacharger credentials supplied");
+            }
             try {
                 savedSessionID = await obtainGigachargerSessionID(email, password);
+                console.log(`Login successful - session ID is ${savedSessionID}`)
             } catch (error) {
+                console.error(`Could not log in to Gigacharger: ${error}`);
                 res.status(500).send("Could not log in to Gigacharger");
                 return;
             }
         }
         await authorizeCharging(savedSessionID, chargerID);
+        console.log("Charging authorized");
         res.status(200).send("Charging authorized");
         return;
     } catch (error) {
-        res.status(500).send(`Could not authorize charging: ${error.message}`);
+        console.error(`Could not authorize charging: ${error}`)
+        res.status(500).send(`Could not authorize charging: ${error}`);
     }
 });
 
-app.listen(3000, "0.0.0.0", () => console.log('Server running on http://localhost:3000'));
+app.listen(3000, "0.0.0.0", () => console.log("Server running on http://localhost:3000"));
