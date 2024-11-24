@@ -220,6 +220,7 @@ app.get("/test/error400", async (req, res) => {
 app.get("/vehicle/unlock", async (req, res) => {
     try {
         await unlockVehicle();
+        logMessage("Vehicle unlocked");
         res.status(200).send("Vehicle unlocked");
     } catch (error) {
         logError(`Could not unlock vehicle: ${error.message}`);
@@ -230,6 +231,7 @@ app.get("/vehicle/unlock", async (req, res) => {
 app.get("/vehicle/lock", async (req, res) => {
     try {
         await lockVehicle();
+        logMessage("Vehicle locked");
         res.status(200).send("Vehicle locked");
     } catch (error) {
         logError(`Could not lock vehicle: ${error.message}`);
