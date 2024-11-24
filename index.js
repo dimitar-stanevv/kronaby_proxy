@@ -189,7 +189,7 @@ async function authorizeCharging(sessionID, chargerID) {
 
 async function unlockVehicle() {
     const unlockResponse = await axios.post(
-        `${TESSIE_API_URL}/${TESSIE_VIN}/command/unlock?wait_for_completion=false`, {
+        `${TESSIE_API_URL}/${TESSIE_VIN}/command/unlock?wait_for_completion=false`, null, {
         headers: {
             // TODO: Reuse headers for Tessie API
             "Accept": "application/json",
@@ -200,7 +200,7 @@ async function unlockVehicle() {
 
 async function lockVehicle() {
     const lockResponse = await axios.post(
-        `${TESSIE_API_URL}/${TESSIE_VIN}/command/lock?wait_for_completion=false`, {
+        `${TESSIE_API_URL}/${TESSIE_VIN}/command/lock?wait_for_completion=false`, null, {
         headers: {
             // TODO: Reuse headers for Tessie API
             "Accept": "application/json",
