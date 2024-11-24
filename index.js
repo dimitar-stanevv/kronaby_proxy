@@ -5,7 +5,7 @@ import WebSocket from "ws";
 import { Agent } from "https";
 import  { scheduleJob } from "node-schedule";
 import dotenv from "dotenv";
-import { haversineDistance } from "haversine-distance"
+import { default as haversine } from "haversine-distance"
 
 dotenv.config();
 const app = express();
@@ -52,12 +52,32 @@ const dailyChargingJob = scheduleJob('0 22 * * *', async () => {
     }
 });
 
+/**
+ * Get the current date and time as a formatted string
+ * @returns The current date and time in the following format: 24-Nov-2024 19:05:33.394
+ */
+function getDateTime() {
+    const now = new Date();
+
+    const day = now.getDate().toString().padStart(2, '0');
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
+
+    return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
 function logMessage(message) {
-    console.log(`${(new Date()).toLocaleString()} | ${message}`);
+    console.log(`[${getDateTime()}] ${message}`);
 }
 
 function logError(errorMessage) {
-    console.error(`${(new Date()).toLocaleString()} | ${errorMessage}`);
+    console.error(`[${getDateTime()}] ${errorMessage}`);
 }
 
 /**
