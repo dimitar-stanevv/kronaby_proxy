@@ -162,4 +162,8 @@ app.get("/gigacharger/start", async (req, res) => {
     }
 });
 
+app.get("/", async (req, res) => {
+    res.status(200).send("The server is running");
+});
+
 app.listen(3000, "0.0.0.0", () => console.log("Server running on http://localhost:3000"));
