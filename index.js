@@ -87,8 +87,7 @@ function logError(errorMessage) {
  * @param {number} radius - The radius (accuracy) in meters - default 100m
  */
 async function isVehicleInTargetLocation(targetLatitude, targetLongitude, radius = 100) {
-    const vin = TESSIE_VIN;
-    const locationResponse = await axios.get(`${TESSIE_API_URL}/${vin}/location`, {
+    const locationResponse = await axios.get(`${TESSIE_API_URL}/${TESSIE_VIN}/location`, {
         headers: {
             "Accept": "application/json",
             "Authorization": `Bearer ${TESSIE_TOKEN}`
@@ -187,6 +186,56 @@ async function authorizeCharging(sessionID, chargerID) {
         }
     });
 }
+
+async function unlockVehicle() {
+    const unlockResponse = await axios.post(
+        `${TESSIE_API_URL}/${TESSIE_VIN}/command/unlock?wait_for_completion=false`, {
+        headers: {
+            // TODO: Reuse headers for Tessie API
+            "Accept": "application/json",
+            "Authorization": `Bearer ${TESSIE_TOKEN}`
+        }
+    });
+}
+
+async function lockVehicle() {
+    const lockResponse = await axios.post(
+        `${TESSIE_API_URL}/${TESSIE_VIN}/command/lock?wait_for_completion=false`, {
+        headers: {
+            // TODO: Reuse headers for Tessie API
+            "Accept": "application/json",
+            "Authorization": `Bearer ${TESSIE_TOKEN}`
+        }
+    });
+}
+
+app.get("/test/error500", async (req, res) => {
+    res.status(500).send("Test response code 500");
+});
+
+app.get("/test/error400", async (req, res) => {
+    res.status(400).send("Test response code 400");
+});
+
+app.get("/vehicle/unlock", async (req, res) => {
+    try {
+        await unlockVehicle();
+        res.status(200).send("Vehicle unlocked");
+    } catch (error) {
+        logError(`Could not unlock vehicle: ${error.message}`);
+        res.status(500).send("Unable to unlock vehicle");
+    }
+});
+
+app.get("/vehicle/lock", async (req, res) => {
+    try {
+        await lockVehicle();
+        res.status(200).send("Vehicle locked");
+    } catch (error) {
+        logError(`Could not lock vehicle: ${error.message}`);
+        res.status(500).send("Unable to lock vehicle");
+    }
+});
 
 /**
  * @route Authorize charging
