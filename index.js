@@ -1,8 +1,8 @@
 import express from "express";
 import  { scheduleJob } from "node-schedule";
 import dotenv from "dotenv";
-import { logMessage, logError } from "./utils";
-import { authorizeCharging } from "./gigacharger_utils";
+import { logMessage, logError } from "./utils.js";
+import { authorizeCharging } from "./gigacharger_utils.js";
 import {
     VEHICLE_HOME_LATITUDE,
     VEHICLE_HOME_LONGITUDE,
@@ -10,7 +10,7 @@ import {
     unlockVehicle,
     findVehicle,
     isVehicleInTargetLocation
-} from "./tessie_utils";
+} from "./tessie_utils.js";
 
 dotenv.config();
 const app = express();

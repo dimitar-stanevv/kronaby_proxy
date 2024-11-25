@@ -2,7 +2,7 @@ import { default as axios } from "axios";
 import FormData from "form-data";
 import WebSocket from "ws";
 import { Agent } from "https";
-import { logMessage, logError } from "./utils";
+import { logMessage, logError } from "./utils.js";
 
 const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1";
 const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414";
