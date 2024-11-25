@@ -1,35 +1,31 @@
 import express from "express";
-import { default as axios } from "axios";
-import FormData from "form-data";
-import WebSocket from "ws";
-import { Agent } from "https";
 import  { scheduleJob } from "node-schedule";
 import dotenv from "dotenv";
-import { default as haversine } from "haversine-distance"
+import { logMessage, logError } from "./utils";
+import { authorizeCharging } from "./gigacharger_utils";
+import {
+    VEHICLE_HOME_LATITUDE,
+    VEHICLE_HOME_LONGITUDE,
+    lockVehicle,
+    unlockVehicle,
+    findVehicle,
+    isVehicleInTargetLocation
+} from "./tessie_utils";
 
 dotenv.config();
 const app = express();
 
-const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1";
-const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414";
-const TESSIE_API_URL = "https://api.tessie.com";
 const SETTINGS_FILE = "settings.json";
-
-// Set these environment variables beforehand
-const GIGACHARGER_EMAIL = process.env.GIGACHARGER_EMAIL;
-const GIGACHARGER_PASSWORD = process.env.GIGACHARGER_PASSWORD;
-const MY_CHARGER_ID = process.env.GIGACHARGER_MY_CHARGER_ID;
-const TESSIE_TOKEN = process.env.TESSIE_TOKEN;
-const TESSIE_VIN = process.env.TESSIE_VIN;
-const VEHICLE_HOME_LATITUDE = process.env.VEHICLE_HOME_LATITUDE;
-const VEHICLE_HOME_LONGITUDE = process.env.VEHICLE_HOME_LONGITUDE;
 const USAGE_PASSWORD = process.env.USAGE_PASSWORD;
 
-// Use a suitable user agent string for making the requests
-const USER_AGENT = "Mozilla/5.0 (Linux; Android 11; sdk_gphone_arm64 Build/RSR1.210722.013.A4; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Mobile Safari/537.36";
-
-// Keep the session identifier in memory once we have it
-var savedSessionID;
+const checkUsagePasswordMiddleware = (req, res, next) => {
+    const providedPassword = req.query.password;
+    if (providedPassword !== USAGE_PASSWORD) {
+        logError(`Unauthorized access attempt: ${req.originalUrl}`);
+        return res.status(401).send("Unauthorized");
+    }
+    next();
+};
 
 const dailyChargingJob = scheduleJob('0 22 * * *', async () => {
     try {
@@ -39,9 +35,9 @@ const dailyChargingJob = scheduleJob('0 22 * * *', async () => {
         );
         if (isVehicleAtHome) {
             try {
-                // TODO: Code repeated in /gigacharger/start request definition
-                // The authorizeCharging function should include obtainGigachargerSession
                 logMessage("Vehicle at home location - authorizing charging...");
+                await authorizeCharging();
+                logMessage("Charging authorized");
             } catch (error) {
                 throw new Error(`Could not authorize charging: ${error.message}`)
             }
@@ -52,180 +48,6 @@ const dailyChargingJob = scheduleJob('0 22 * * *', async () => {
         logError(`Daily charging job failed: ${error.message}`)
     }
 });
-
-/**
- * Get the current date and time as a formatted string
- * @returns The current date and time in the following format: 24-Nov-2024 19:05:33.394
- */
-function getDateTime() {
-    const now = new Date();
-
-    const day = now.getDate().toString().padStart(2, '0');
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[now.getMonth()];
-    const year = now.getFullYear();
-
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
-
-    return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-}
-
-function logMessage(message) {
-    console.log(`[${getDateTime()}] ${message}`);
-}
-
-function logError(errorMessage) {
-    console.error(`[${getDateTime()}] ${errorMessage}`);
-}
-
-/**
- * Use the Tessie API to get if the vehicle is at a given location
- * @param {number} targetLatitude - Latitude of location to check
- * @param {number} targetLongitude - Longitude of location to check
- * @param {number} radius - The radius (accuracy) in meters - default 100m
- */
-async function isVehicleInTargetLocation(targetLatitude, targetLongitude, radius = 100) {
-    const locationResponse = await axios.get(`${TESSIE_API_URL}/${TESSIE_VIN}/location`, {
-        headers: {
-            "Accept": "application/json",
-            "Authorization": `Bearer ${TESSIE_TOKEN}`
-        }
-    });
-    const { latitude, longitude } = locationResponse.data;
-
-    const targetLocation = { latitude: targetLat, longitude: targetLon };
-    const vehicleLocation = { latitude: latitude, longitude: longitude };
-    return haversine(targetLocation, vehicleLocation) <= radius;
-}
-
-/**
- * Log in to Gigacharger to obtain a session ID via a cookie.
- * @returns {Promise<String>} - A new valid session ID
- * @throws If the login request fails, an exception is thrown
- */
-async function obtainGigachargerSessionID(email, password) {
-    const formData = new FormData();
-    formData.append("remember", "1");
-    formData.append("email", email);
-    formData.append("password", password);
-    const loginResponse = await axios.post(`${GIGACHARGER_API_HOST}/login`, formData, {
-        headers: {
-            "User-Agent": USER_AGENT,
-            "X-Requested-With": "net.gigacharger.app",
-            "Sec-Fetch-Site": "cross-site",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Dest": "empty",
-            "Accept-Encoding": "gzip, deflate",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "application/json",
-            ...formData.getHeaders()
-        }
-    });
-    const cookies = loginResponse.headers["set-cookie"];
-    const sessionCookie = cookies.find(cookie => cookie.includes("manix-sess"));
-    if (!sessionCookie) {
-        throw new Error("Unable to log in to Gigacharger - no session cookie found in response");
-    }
-    return sessionCookie
-        .split("manix-sess=")[1]
-        .split(";")[0];
-}
-
-/**
- * Authorize a charging session.
- * @param {string} sessionID - A valid Gigacharger session ID
- * @param {string} chargerID - The charger to use
- * @returns {Promise<void>} - When the charging session is authorized successfully
- * @throws If the request fails, an exception is thrown
- */
-async function authorizeCharging(sessionID, chargerID) {
-    return new Promise((resolve, reject) => {
-        try {
-            const webSocket = new WebSocket(GIGACHARGER_WS_URL, {
-                headers: {
-                    "User-Agent": USER_AGENT,
-                    "Cookie": `manix-sess=${sessionID}`,
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
-                    "Accept-Encoding": "gzip, deflate",
-                    "Accept-Language": "en-US,en;q=0.9",
-                },
-                agent: new Agent({
-                    rejectUnauthorized: false
-                })
-            });
-
-            webSocket.on("open", () => {
-                const message = `["drain/start","${chargerID}"]`;
-                webSocket.send(message, (error) => {
-                    webSocket.close(1000);
-                    if (error) {
-                        reject(new Error("Could not authorize charging - error sending the start command"));
-                    } else {
-                        resolve();
-                    }
-                });
-            });
-        
-            webSocket.on("error", (error) => {
-                reject(new Error(`Could not connect to Gigacharger's WebSocket: ${error}`));
-            });
-        
-            webSocket.on("close", (code, reason) => {
-                if (code !== 1000) {
-                    // A code 1000 is considered a normal closure
-                    // For more info, see here:
-                    // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
-                    reject(new Error("Unexpected connection closure"));
-                }
-            });
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-async function unlockVehicle() {
-    const unlockResponse = await axios.post(
-        `${TESSIE_API_URL}/${TESSIE_VIN}/command/unlock?wait_for_completion=false`, null, {
-        headers: {
-            // TODO: Reuse headers for Tessie API
-            "Accept": "application/json",
-            "Authorization": `Bearer ${TESSIE_TOKEN}`
-        }
-    });
-}
-
-async function lockVehicle() {
-    const lockResponse = await axios.post(
-        `${TESSIE_API_URL}/${TESSIE_VIN}/command/lock?wait_for_completion=false`, null, {
-        headers: {
-            // TODO: Reuse headers for Tessie API
-            "Accept": "application/json",
-            "Authorization": `Bearer ${TESSIE_TOKEN}`
-        }
-    });
-}
-
-app.get("/test/error500", async (req, res) => {
-    res.status(500).send("Test response code 500");
-});
-
-app.get("/test/error400", async (req, res) => {
-    res.status(400).send("Test response code 400");
-});
-
-const checkUsagePasswordMiddleware = (req, res, next) => {
-    const providedPassword = req.query.password;
-    if (providedPassword !== USAGE_PASSWORD) {
-        logError(`Unauthorized access attempt: ${req.originalUrl}`);
-        return res.status(401).send("Unauthorized");
-    }
-    next();
-};
 
 app.get("/vehicle/unlock", checkUsagePasswordMiddleware, async (req, res) => {
     try {
@@ -250,6 +72,26 @@ app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
 });
 
 /**
+ * @route Find vehicle
+ * @description Flash the lights on the vehicle to find it easily
+ * @param {number} [numberOfFlashes] - How many times to flash the lights (default 3)
+ * @param {boolean} [useHorn] - Whether to also trigger the horn before flashing the lights (default false)
+ * @returns {void} 200 - Request is successful
+ * @returns {Error} 500 - Internal Server Error
+ */
+app.get("/vehicle/find", checkUsagePasswordMiddleware, async (req, res) => {
+    try {
+        const numberOfFlashes = parseInt(req.query.numberOfFlashes) || 3;
+        const useHorn = req.query.useHorn === "true";
+        logMessage(`Attempting to trigger find vehicle with numberOfFlashes = ${numberOfFlashes} and useHorn = ${useHorn}...`);
+        await findVehicle(numberOfFlashes, useHorn);
+        res.status(200).send("Find vehicle triggered - lights should now flash");
+    } catch (error) {
+        logError(`Could not trigger find vehicle: ${error.message}`);
+    }
+});
+
+/**
  * @route Authorize charging
  * @description Use the Gigacharger API to authorize a charging session
  * @param {string} [charger] - Charger ID (optional) - if null, will use the one 
@@ -259,32 +101,7 @@ app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
  */
 app.get("/gigacharger/start", checkUsagePasswordMiddleware, async (req, res) => {
     try {
-        const chargerID = MY_CHARGER_ID;
-        if (!chargerID) {
-            logError("No charger ID supplied - check env variables");
-            res.status(400).send("No charger ID supplied");
-            return;
-        }
-        logMessage(`Starting authorization for charger ID ${chargerID}`);
-        if (!savedSessionID) {
-            logMessage("Not authenticated with Gigacharger - attempting to log in...");
-            // No saved session exists - login is required
-            const email = GIGACHARGER_EMAIL;
-            const password = GIGACHARGER_PASSWORD;
-            if (!email || !password) {
-                logError("No credentials for Gigacharger supplied - check env variables");
-                res.status(400).send("No Gigacharger credentials supplied");
-            }
-            try {
-                savedSessionID = await obtainGigachargerSessionID(email, password);
-                logMessage(`Login successful - session ID is ${savedSessionID}`)
-            } catch (error) {
-                logError(`Could not log in to Gigacharger: ${error}`);
-                res.status(500).send("Could not log in to Gigacharger");
-                return;
-            }
-        }
-        await authorizeCharging(savedSessionID, chargerID);
+        await authorizeCharging();
         logMessage("Charging authorized");
         res.status(200).send("Charging authorized");
         return;
