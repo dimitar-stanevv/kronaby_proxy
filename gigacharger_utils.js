@@ -89,7 +89,7 @@ export async function authorizeCharging() {
                 const webSocket = new WebSocket(GIGACHARGER_WS_URL, {
                     headers: {
                         "User-Agent": GIGACHARGER_USER_AGENT,
-                        "Cookie": `manix-sess=${sessionID}`,
+                        "Cookie": `manix-sess=${savedGigachargerSessionID}`,
                         "Cache-Control": "no-cache",
                         "Pragma": "no-cache",
                         "Accept-Encoding": "gzip, deflate",
