@@ -22,6 +22,8 @@ var savedGigachargerSessionID;
 
 /**
  * Log in to Gigacharger to obtain a session ID via a cookie.
+ * @param {string} email - The email for Gigacharger
+ * @param {string} password - The password for Gigacharger
  * @returns {Promise<String>} - A new valid session ID
  * @throws If the login request fails, an exception is thrown
  */
@@ -55,8 +57,6 @@ async function obtainGigachargerSessionID(email, password) {
 
 /**
  * Authorize a charging session.
- * @param {string} sessionID - A valid Gigacharger session ID
- * @param {string} chargerID - The charger to use
  * @returns {Promise<void>} - When the charging session is authorized successfully
  * @throws If the request fails, an exception is thrown
  */
