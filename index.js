@@ -28,6 +28,7 @@ const checkUsagePasswordMiddleware = (req, res, next) => {
 };
 
 const dailyChargingJob = scheduleJob('0 22 * * *', async () => {
+    logMessage("Starting job: daily charging");
     try {
         const isVehicleAtHome = await isVehicleInTargetLocation(
             VEHICLE_HOME_LATITUDE,
