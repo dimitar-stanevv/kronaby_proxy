@@ -1,5 +1,9 @@
 import { default as axios } from "axios";
 import { default as haversine } from "haversine-distance";
+import dotenv from "dotenv";
+import { logMessage } from "./utils.js";
+
+dotenv.config();
 
 const TESSIE_API_URL = "https://api.tessie.com";
 const TESSIE_TOKEN = process.env.TESSIE_TOKEN;
@@ -15,6 +19,20 @@ const tessieApiClient = axios.create({
         "Accept": "application/json",
         "Authorization": `Bearer ${TESSIE_TOKEN}`
     }
+});
+
+tessieApiClient.interceptors.request.use((config) => {
+    const headersAsString = (headers) =>
+        Object.entries(headers)
+            .map(([key, value]) => `\t-> ${key}: ${value}`)
+            .join('\n');
+
+    logMessage("Outgoing request to Tessie API:\n" +
+        `\t${config.method.toString().toUpperCase()} ${config.baseURL}${config.url}\n` +
+        `\tHeaders: \n${headersAsString(config.headers)}\n` +
+        `\tData: ${config.data}`
+    );
+    return config;
 });
 
 /**

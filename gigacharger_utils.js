@@ -3,6 +3,9 @@ import FormData from "form-data";
 import WebSocket from "ws";
 import { Agent } from "https";
 import { logMessage, logError } from "./utils.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const GIGACHARGER_API_HOST = "https://core.gigacharger.net/v1";
 const GIGACHARGER_WS_URL = "wss://ws.gigacharger.net:41414";
