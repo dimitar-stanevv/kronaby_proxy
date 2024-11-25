@@ -23,6 +23,7 @@ const TESSIE_TOKEN = process.env.TESSIE_TOKEN;
 const TESSIE_VIN = process.env.TESSIE_VIN;
 const VEHICLE_HOME_LATITUDE = process.env.VEHICLE_HOME_LATITUDE;
 const VEHICLE_HOME_LONGITUDE = process.env.VEHICLE_HOME_LONGITUDE;
+const USAGE_PASSWORD = process.env.USAGE_PASSWORD;
 
 // Use a suitable user agent string for making the requests
 const USER_AGENT = "Mozilla/5.0 (Linux; Android 11; sdk_gphone_arm64 Build/RSR1.210722.013.A4; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Mobile Safari/537.36";
@@ -217,7 +218,16 @@ app.get("/test/error400", async (req, res) => {
     res.status(400).send("Test response code 400");
 });
 
-app.get("/vehicle/unlock", async (req, res) => {
+const checkUsagePasswordMiddleware = (req, res, next) => {
+    const providedPassword = req.query.password;
+    if (providedPassword !== USAGE_PASSWORD) {
+        logError(`Unauthorized access attempt: ${req.originalUrl}`);
+        return res.status(401).send("Unauthorized");
+    }
+    next();
+};
+
+app.get("/vehicle/unlock", checkUsagePasswordMiddleware, async (req, res) => {
     try {
         await unlockVehicle();
         logMessage("Vehicle unlocked");
@@ -228,7 +238,7 @@ app.get("/vehicle/unlock", async (req, res) => {
     }
 });
 
-app.get("/vehicle/lock", async (req, res) => {
+app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
     try {
         await lockVehicle();
         logMessage("Vehicle locked");
@@ -247,7 +257,7 @@ app.get("/vehicle/lock", async (req, res) => {
  * @returns {void} 200 - If charging has been successfully authorized
  * @returns {Error} 500 - Internal Server Error
  */
-app.get("/gigacharger/start", async (req, res) => {
+app.get("/gigacharger/start", checkUsagePasswordMiddleware, async (req, res) => {
     try {
         const chargerID = MY_CHARGER_ID;
         if (!chargerID) {
