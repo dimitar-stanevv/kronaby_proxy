@@ -24,7 +24,7 @@ const tessieApiClient = axios.create({
 tessieApiClient.interceptors.request.use((config) => {
     const headersAsString = (headers) =>
         Object.entries(headers)
-            .map(([key, value]) => `\t-> ${key}: ${value}`)
+            .map(([key, value]) => `\t -> ${key}: ${value}`)
             .join('\n');
 
     logMessage("Outgoing request to Tessie API:\n" +
