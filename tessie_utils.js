@@ -72,6 +72,13 @@ export async function lockVehicle() {
     );
 }
 
+export async function openFrunk() {
+    await tessieApiClient.post(
+        "/command/activate_front_trunk",
+        null
+    );
+}
+
 /**
  * Flash the lights on the vehicle to find it easily
  * @param {number} numberOfFlashes - The number of times to flash the lights

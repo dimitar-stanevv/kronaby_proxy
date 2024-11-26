@@ -9,7 +9,8 @@ import {
     lockVehicle,
     unlockVehicle,
     findVehicle,
-    isVehicleInTargetLocation
+    isVehicleInTargetLocation,
+    openFrunk
 } from "./tessie_utils.js";
 
 dotenv.config();
@@ -69,6 +70,17 @@ app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
     } catch (error) {
         logError(`Could not lock vehicle: ${error.message}`);
         res.status(500).send("Unable to lock vehicle");
+    }
+});
+
+app.get("/vehicle/frunk", checkUsagePasswordMiddleware, async (req, res) => {
+    try {
+        await openFrunk();
+        logMessage("Opened frunk");
+        res.status(200).send("Frunk open");
+    } catch (error) {
+        logError(`Could not open frunk: ${error.message}`);
+        res.status(500).send("Unable to open frunk");
     }
 });
 
