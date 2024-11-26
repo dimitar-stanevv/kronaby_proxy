@@ -3,6 +3,7 @@ import  { scheduleJob } from "node-schedule";
 import dotenv from "dotenv";
 import { logMessage, logError } from "./utils.js";
 import { authorizeCharging } from "./gigacharger_utils.js";
+import * as path from "path";
 import {
     VEHICLE_HOME_LATITUDE,
     VEHICLE_HOME_LONGITUDE,
@@ -12,6 +13,11 @@ import {
     isVehicleInTargetLocation,
     openFrunk
 } from "./tessie_utils.js";
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Polyfill __dirname
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 dotenv.config();
 const app = express();
@@ -126,6 +132,16 @@ app.get("/gigacharger/start", checkUsagePasswordMiddleware, async (req, res) => 
 
 app.get("/", async (req, res) => {
     res.status(200).send("The server is running");
+});
+
+app.get("/.well-known/appspecific/com.tesla.3p.public-key.pem", async (req, res) => {
+    const filePath = path.join(__dirname, "keys", "public-key.pem");
+    res.sendFile(filePath, (error) => {
+        if (error) {
+            logError("Error providing the public key as a file:", error);
+            res.status(500).send("Internal Server Error");
+        }
+    });
 });
 
 app.listen(3000, "0.0.0.0", () => logMessage("Server running on http://localhost:3000"));
