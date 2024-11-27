@@ -15,6 +15,7 @@ import {
 } from "./tessie_utils.js";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { generatePartnerToken } from "./tesla_api_utils.js";
 
 // Polyfill __dirname
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -142,6 +143,25 @@ app.get("/.well-known/appspecific/com.tesla.3p.public-key.pem", async (req, res)
             res.status(500).send("Internal Server Error");
         }
     });
+});
+
+app.get("/tesla/api/generate-partner-token", async (req, res) => {
+    try {
+        const token = await generatePartnerToken();
+        res.status(200).send(token);
+    } catch (error) {
+        logError(`Error while generating Tesla partner token: ${error.message}`);
+        res.status(500).send("Internal server error");
+    }
+});
+
+app.get("/tesla/api/register", async (req, res) => {
+    try {
+        // TODO
+    } catch (error) {
+        logError(`Error while registering application: ${error.message}`);
+        res.status(500).send("Internal server error");
+    }
 });
 
 app.listen(3000, "0.0.0.0", () => logMessage("Server running on http://localhost:3000"));

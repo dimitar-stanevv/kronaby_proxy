@@ -18,6 +18,11 @@ export function getDateTime() {
     return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
 
+export const headersAsString = (headers) =>
+    Object.entries(headers)
+        .map(([key, value]) => `\t -> ${key}: ${value}`)
+        .join('\n');
+
 export function logMessage(message) {
     console.log(`[${getDateTime()}] ${message}`);
 }

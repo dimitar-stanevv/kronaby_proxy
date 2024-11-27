@@ -1,7 +1,7 @@
 import { default as axios } from "axios";
 import { default as haversine } from "haversine-distance";
 import dotenv from "dotenv";
-import { logMessage } from "./utils.js";
+import { logMessage, headersAsString } from "./utils.js";
 
 dotenv.config();
 
@@ -22,11 +22,6 @@ const tessieApiClient = axios.create({
 });
 
 tessieApiClient.interceptors.request.use((config) => {
-    const headersAsString = (headers) =>
-        Object.entries(headers)
-            .map(([key, value]) => `\t -> ${key}: ${value}`)
-            .join('\n');
-
     logMessage("Outgoing request to Tessie API:\n" +
         `\t${config.method.toString().toUpperCase()} ${config.baseURL}${config.url}\n` +
         `\tHeaders: \n${headersAsString(config.headers)}\n` +
