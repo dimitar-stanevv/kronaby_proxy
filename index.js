@@ -11,7 +11,8 @@ import {
     unlockVehicle,
     findVehicle,
     isVehicleInTargetLocation,
-    openFrunk
+    openFrunk,
+    startClimate
 } from "./tessie_utils.js";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -88,6 +89,17 @@ app.get("/vehicle/frunk", checkUsagePasswordMiddleware, async (req, res) => {
     } catch (error) {
         logError(`Could not open frunk: ${error.message}`);
         res.status(500).send("Unable to open frunk");
+    }
+});
+
+app.get("/vehicle/climate", checkUsagePasswordMiddleware, async (req, res) => {
+    try {
+        await startClimate();
+        logMessage("Climate started");
+        res.status(200).send("Climate started");
+    } catch (error) {
+        logError(`Could not start climate: ${error.message}`);
+        res.status(500).send("Unable to start climate");
     }
 });
 

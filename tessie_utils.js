@@ -69,7 +69,14 @@ export async function lockVehicle() {
 
 export async function openFrunk() {
     await tessieApiClient.post(
-        "/command/activate_front_trunk",
+        "/command/activate_front_trunk?wait_for_completion=false",
+        null
+    );
+}
+
+export async function startClimate() {
+    await tessieApiClient.post(
+        "/command/start_climate?wait_for_completion=false",
         null
     );
 }

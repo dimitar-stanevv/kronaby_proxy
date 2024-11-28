@@ -103,7 +103,10 @@ export async function authorizeCharging() {
                 webSocket.on("open", () => {
                     const message = `["drain/start","${chargerID}"]`;
                     webSocket.send(message, (error) => {
-                        webSocket.close(1000);
+                        // TODO: Check if the WebSocket should be closed at this point
+                        // It's possible that closing the web socket right after sending
+                        // the start drain message is causing some issues
+                        // webSocket.close(1000);
                         if (error) {
                             reject(new Error("Could not authorize charging - error sending the start command"));
                         } else {
