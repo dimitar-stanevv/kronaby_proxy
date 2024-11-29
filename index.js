@@ -12,7 +12,8 @@ import {
     findVehicle,
     isVehicleInTargetLocation,
     openFrunk,
-    startClimate
+    startClimate,
+    toggleVehicleLock
 } from "./tessie_utils.js";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
