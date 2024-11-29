@@ -67,6 +67,18 @@ export async function lockVehicle() {
     );
 }
 
+export async function toggleVehicleLock() {
+    logMessage("Toggle lock state requested");
+    const vehicleData = await tessieApiClient.get("/state");
+    const isLocked = vehicleData.data["vehicle_state"]["locked"];
+    logMessage(`Vehicle is locked: ${isLocked}`);
+    if (isLocked) {
+        await unlockVehicle();
+    } else {
+        await lockVehicle();
+    }
+}
+
 export async function openFrunk() {
     await tessieApiClient.post(
         "/command/activate_front_trunk?wait_for_completion=false",

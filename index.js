@@ -81,6 +81,16 @@ app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
     }
 });
 
+app.get("/vehicle/toggle-lock", checkUsagePasswordMiddleware, async (req, res) => {
+    try {
+        await toggleVehicleLock();
+        res.status(200).send("Vehicle lock status toggled");
+    } catch (error) {
+        logError(`Could not toggle vehicle lock status: ${error.message}`);
+        res.status(500).send("Unable to toggle vehicle lock status");
+    }
+});
+
 app.get("/vehicle/frunk", checkUsagePasswordMiddleware, async (req, res) => {
     try {
         await openFrunk();
