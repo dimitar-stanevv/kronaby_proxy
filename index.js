@@ -82,13 +82,38 @@ app.get("/vehicle/lock", checkUsagePasswordMiddleware, async (req, res) => {
     }
 });
 
+// Store the last manual unlock timestamp
+let lastManualUnlockTime = null;
+
+/**
+ * Unlock or lock the vehicle
+ * If the vehicle was unlocked manually in the last 5 minutes it will be locked
+ * Else, it will be unlocked
+ * We don't have a "toggle" command for the lock status and fetching the latest data
+ * including lock status is tricky, because the cache is unreliable and if the vehicle
+ * is asleep fetching data takes a lot of time
+ * IMPORTANT: This request is INCOMPATIBLE with the lock/unlock requests above!
+ */
 app.get("/vehicle/toggle-lock", checkUsagePasswordMiddleware, async (req, res) => {
+    
+    const now = Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
+
     try {
-        await toggleVehicleLock();
-        res.status(200).send("Vehicle lock status toggled");
+        if (lastManualUnlockTime && (now - lastManualUnlockTime < fiveMinutes)) {
+            logMessage("Less than 5 minutes have passed since last manual unlock - locking...");
+            await lockVehicle();
+            lastManualUnlockTime = null;
+            res.status(200).send("Vehicle locked");
+        } else {
+            logMessage("More than 5 minutes have passed since last manual unlock - unlocking...");
+            await unlockVehicle();
+            lastManualUnlockTime = now;
+            res.status(200).send("Vehicle unlocked");
+        }
     } catch (error) {
-        logError(`Could not toggle vehicle lock status: ${error.message}`);
-        res.status(500).send("Unable to toggle vehicle lock status");
+        logError(`Could not toggle lock state: ${error.message}`);
+        res.status(500).send("Unable to toggle lock state");
     }
 });
 
