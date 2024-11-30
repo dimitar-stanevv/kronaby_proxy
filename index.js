@@ -95,7 +95,7 @@ let lastManualUnlockTime = null;
  * IMPORTANT: This request is INCOMPATIBLE with the lock/unlock requests above!
  */
 app.get("/vehicle/toggle-lock", checkUsagePasswordMiddleware, async (req, res) => {
-    
+
     const now = Date.now();
     const fiveMinutes = 5 * 60 * 1000;
 
@@ -114,6 +114,17 @@ app.get("/vehicle/toggle-lock", checkUsagePasswordMiddleware, async (req, res) =
     } catch (error) {
         logError(`Could not toggle lock state: ${error.message}`);
         res.status(500).send("Unable to toggle lock state");
+    }
+});
+
+app.get("vehicle/charge-port", checkUsagePasswordMiddleware, async (req, res) => {
+    try {
+        await openOrUnlockChargePort();
+        logMessage("Charge port actuated");
+        res.status(200).send("Charge port actuated");
+    } catch (error) {
+        logError(`Could not actuate charge port: ${error.message}`);
+        res.status(500).send("Unable to actuate charge port");
     }
 });
 

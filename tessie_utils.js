@@ -79,6 +79,13 @@ export async function toggleVehicleLock() {
     }
 }
 
+export async function openOrUnlockChargePort() {
+    await tessieApiClient.post(
+        "/command/open_charge_port",
+        null
+    );
+}
+
 export async function openFrunk() {
     await tessieApiClient.post(
         "/command/activate_front_trunk?wait_for_completion=false",
