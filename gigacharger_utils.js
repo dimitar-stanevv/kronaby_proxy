@@ -117,7 +117,7 @@ export async function authorizeCharging() {
                     // The message should look like this:
                     // ["session",[10334,1441,0.001,7400,1],null]
                     logMessage(`Response from Gigacharger: ${data}`);
-                    const match = encodedString.match(/\[([^\]]+)\]/);
+                    const match = data.match(/\[([^\]]+)\]/);
                     if (match) {
                         const arrayString = match[1];
                         const resultArray = arrayString.split(',').map(Number);
