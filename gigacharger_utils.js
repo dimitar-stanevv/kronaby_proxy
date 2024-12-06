@@ -18,7 +18,8 @@ const MY_CHARGER_ID = process.env.GIGACHARGER_MY_CHARGER_ID;
 const GIGACHARGER_USER_AGENT = "Mozilla/5.0 (Linux; Android 11; sdk_gphone_arm64 Build/RSR1.210722.013.A4; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Mobile Safari/537.36";
 
 // Keep the Gigacharger session identifier in memory once we have it
-var savedGigachargerSessionID;
+var savedGigachargerSessionID = "ui8s7gsrr4i196tf0e5aliap1h";
+// TODO: For now the session ID is hardcoded, fix this later
 
 /**
  * Log in to Gigacharger to obtain a session ID via a cookie.
@@ -99,20 +100,31 @@ export async function authorizeCharging() {
                         rejectUnauthorized: false
                     })
                 });
+
+                setTimeout(() => {
+                    webSocket.close(1000);
+                }, 40000); // Timeout after 40 seconds
     
                 webSocket.on("open", () => {
                     const message = `["drain/start","${chargerID}"]`;
                     webSocket.send(message, (error) => {
-                        // TODO: Check if the WebSocket should be closed at this point
-                        // It's possible that closing the web socket right after sending
-                        // the start drain message is causing some issues
-                        // webSocket.close(1000);
                         if (error) {
                             reject(new Error("Could not authorize charging - error sending the start command"));
-                        } else {
-                            resolve();
                         }
                     });
+                });
+
+                webSocket.on("message", function message(data) {
+                    // The message should look like this:
+                    // ["session",[10334,1441,0.001,7400,1],null]
+                    logMessage(`Response from Gigacharger: ${data}`);
+                    const match = encodedString.match(/\[([^\]]+)\]/);
+                    if (match) {
+                        const arrayString = match[1];
+                        const resultArray = arrayString.split(',').map(Number);
+                        logMessage(`Energy transfer: ${resultArray[1] / 1000} kWh`);
+                    }
+                    resolve();
                 });
             
                 webSocket.on("error", (error) => {
@@ -125,6 +137,9 @@ export async function authorizeCharging() {
                         // For more info, see here:
                         // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
                         reject(new Error("Unexpected connection closure"));
+                    } else {
+                        logError("Gigacharger request timed out");
+                        reject(new Error("Gigacharger request timed out"));
                     }
                 });
             } catch (error) {
