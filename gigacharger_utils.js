@@ -69,21 +69,19 @@ export async function authorizeCharging() {
         }
         logMessage(`Starting authorization for charger ID ${chargerID}`);
         try {
-            if (!savedGigachargerSessionID) {
-                logMessage("Not authenticated with Gigacharger - attempting to log in...");
-                const email = GIGACHARGER_EMAIL;
-                const password = GIGACHARGER_PASSWORD;
-                if (!email || !password) {
-                    logError("No credentials for Gigacharger supplied - check env variables");
-                    reject("No Gigacharger credentials supplied");
-                }
-                try {
-                    savedGigachargerSessionID = await obtainGigachargerSessionID(email, password);
-                    logMessage(`Login successful - session ID is ${savedGigachargerSessionID}`)
-                } catch (gigachargerLoginError) {
-                    logError(`Could not log in to Gigacharger: ${gigachargerLoginError}`);
-                    reject("Could not log in to Gigacharger");
-                }
+            logMessage("Logging in to Gigacharger...");
+            const email = GIGACHARGER_EMAIL;
+            const password = GIGACHARGER_PASSWORD;
+            if (!email || !password) {
+                logError("No credentials for Gigacharger supplied - check env variables");
+                reject("No Gigacharger credentials supplied");
+            }
+            try {
+                savedGigachargerSessionID = await obtainGigachargerSessionID(email, password);
+                logMessage(`Login successful - session ID is ${savedGigachargerSessionID}`)
+            } catch (gigachargerLoginError) {
+                logError(`Could not log in to Gigacharger: ${gigachargerLoginError}`);
+                reject("Could not log in to Gigacharger");
             }
             try {
                 const webSocket = new WebSocket(GIGACHARGER_WS_URL, {
@@ -131,6 +129,7 @@ export async function authorizeCharging() {
                         // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
                         reject(new Error("Unexpected connection closure"));
                     } else {
+                        // TODO: Why does the request time out after resolve() ?
                         logError("Gigacharger request timed out");
                         reject(new Error("Gigacharger request timed out"));
                     }
