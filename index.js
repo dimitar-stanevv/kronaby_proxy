@@ -118,7 +118,7 @@ app.get("/vehicle/toggle-lock", checkUsagePasswordMiddleware, async (req, res) =
     }
 });
 
-app.get("vehicle/charge-port", checkUsagePasswordMiddleware, async (req, res) => {
+app.get("/vehicle/charge-port", checkUsagePasswordMiddleware, async (req, res) => {
     try {
         await openOrUnlockChargePort();
         logMessage("Charge port actuated");
