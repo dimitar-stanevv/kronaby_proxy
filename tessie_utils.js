@@ -100,13 +100,6 @@ export async function startClimate() {
     );
 }
 
-export async function openAndUnlockChargePort() {
-    await tessieApiClient.post(
-        "/command/open_charge_port?wait_for_completion=false",
-        null
-    )
-}
-
 /**
  * Flash the lights on the vehicle to find it easily
  * @param {number} numberOfFlashes - The number of times to flash the lights
